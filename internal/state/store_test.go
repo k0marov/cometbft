@@ -11,7 +11,6 @@ import (
 
 	dbm "github.com/cometbft/cometbft-db"
 	abci "github.com/cometbft/cometbft/abci/types"
-	cmtstate "github.com/cometbft/cometbft/api/cometbft/state/v1"
 	cfg "github.com/cometbft/cometbft/config"
 	"github.com/cometbft/cometbft/crypto/ed25519"
 	sm "github.com/cometbft/cometbft/internal/state"
@@ -565,51 +564,6 @@ func TestLastFinalizeBlockResponses(t *testing.T) {
 		_, err = stateStore.LoadFinalizeBlockResponse(height + 1)
 		assert.Equal(t, sm.ErrFinalizeBlockResponsesNotPersisted, err)
 	})
-}
-
-func TestFinalizeBlockRecoveryUsingLegacyABCIResponses(t *testing.T) {
-	var (
-		height              int64 = 10
-		lastABCIResponseKey       = []byte("lastABCIResponseKey")
-		memDB                     = dbm.NewMemDB()
-		cp                        = types.DefaultConsensusParams().ToProto()
-		legacyResp                = cmtstate.ABCIResponsesInfo{
-			LegacyAbciResponses: &cmtstate.LegacyABCIResponses{
-				BeginBlock: &cmtstate.ResponseBeginBlock{
-					Events: []abci.Event{{
-						Type: "begin_block",
-						Attributes: []abci.EventAttribute{{
-							Key:   "key",
-							Value: "value",
-						}},
-					}},
-				},
-				DeliverTxs: []*abci.ExecTxResult{{
-					Events: []abci.Event{{
-						Type: "tx",
-						Attributes: []abci.EventAttribute{{
-							Key:   "key",
-							Value: "value",
-						}},
-					}},
-				}},
-				EndBlock: &cmtstate.ResponseEndBlock{
-					ConsensusParamUpdates: &cp,
-				},
-			},
-			Height: height,
-		}
-	)
-	bz, err := legacyResp.Marshal()
-	require.NoError(t, err)
-	// should keep this in parity with state/store.go
-	require.NoError(t, memDB.Set(lastABCIResponseKey, bz))
-	stateStore := sm.NewStore(memDB, sm.StoreOptions{DiscardABCIResponses: false})
-	resp, err := stateStore.LoadLastFinalizeBlockResponse(height)
-	require.NoError(t, err)
-	require.Equal(t, resp.ConsensusParamUpdates, &cp)
-	require.Equal(t, resp.Events, legacyResp.LegacyAbciResponses.BeginBlock.Events)
-	require.Equal(t, resp.TxResults[0], legacyResp.LegacyAbciResponses.DeliverTxs[0])
 }
 
 func TestIntConversion(t *testing.T) {

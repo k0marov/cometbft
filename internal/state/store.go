@@ -46,7 +46,6 @@ func calcABCIResponsesKey(height int64) []byte {
 //----------------------
 
 var (
-	lastABCIResponseKey              = []byte("lastABCIResponseKey")
 	lastABCIResponsesRetainHeightKey = []byte("lastABCIResponsesRetainHeight")
 	offlineStateSyncHeight           = []byte("offlineStateSyncHeightKey")
 )
@@ -524,39 +523,16 @@ func (store dbStore) LoadFinalizeBlockResponse(height int64) (*abci.FinalizeBloc
 // This method is used for recovering in the case that we called the Commit ABCI
 // method on the application but crashed before persisting the results.
 func (store dbStore) LoadLastFinalizeBlockResponse(height int64) (*abci.FinalizeBlockResponse, error) {
-	bz, err := store.db.Get(lastABCIResponseKey)
+	buf, err := store.db.Get(calcABCIResponsesKey(height))
 	if err != nil {
 		return nil, err
 	}
-
-	if len(bz) == 0 {
-		return nil, errors.New("no last ABCI response has been persisted")
+	if len(buf) == 0 {
+		return nil, fmt.Errorf("expected last ABCI responses at height %d, but none are found", height)
 	}
-
-	info := new(cmtstate.ABCIResponsesInfo)
-	err = info.Unmarshal(bz)
-	if err != nil {
-		cmtos.Exit(fmt.Sprintf(`LoadLastFinalizeBlockResponse: Data has been corrupted or its spec has
-			changed: %v\n`, err))
-	}
-
-	// Here we validate the result by comparing its height to the expected height.
-	if height != info.GetHeight() {
-		return nil, fmt.Errorf("expected height %d but last stored abci responses was at height %d", height, info.GetHeight())
-	}
-
-	// It is possible if this is called directly after an upgrade that
-	// FinalizeBlockResponse is nil. In which case we use the legacy
-	// ABCI responses
-	if info.FinalizeBlock == nil {
-		// sanity check
-		if info.LegacyAbciResponses == nil {
-			panic("state store contains last abci response but it is empty")
-		}
-		return responseFinalizeBlockFromLegacy(info.LegacyAbciResponses), nil
-	}
-
-	return info.FinalizeBlock, nil
+	resp := new(abci.FinalizeBlockResponse)
+	err = resp.Unmarshal(buf)
+	return resp, err
 }
 
 // SaveFinalizeBlockResponse persists the FinalizeBlockResponse to the database.
@@ -575,30 +551,21 @@ func (store dbStore) SaveFinalizeBlockResponse(height int64, resp *abci.Finalize
 	}
 	resp.TxResults = dtxs
 
-	// If the flag is false then we save the ABCIResponse. This can be used for the /BlockResults
-	// query or to reindex an event using the command line.
-	if !store.DiscardABCIResponses {
-		bz, err := resp.Marshal()
-		if err != nil {
-			return err
-		}
-		if err := store.db.Set(calcABCIResponsesKey(height), bz); err != nil {
-			return err
-		}
-	}
-
-	// We always save the last ABCI response for crash recovery.
-	// This overwrites the previous saved ABCI Response.
-	response := &cmtstate.ABCIResponsesInfo{
-		FinalizeBlock: resp,
-		Height:        height,
-	}
-	bz, err := response.Marshal()
+	bz, err := resp.Marshal()
 	if err != nil {
 		return err
 	}
 
-	return store.db.SetSync(lastABCIResponseKey, bz)
+	// Save the ABCI response.
+	//
+	// We always save the last ABCI response for crash recovery.
+	// If `store.DiscardABCIResponses` is true, then we delete the previous ABCI response.
+	if store.DiscardABCIResponses && height > 1 {
+		if err := store.db.Delete(calcABCIResponsesKey(height - 1)); err != nil {
+			return err
+		}
+	}
+	return store.db.SetSync(calcABCIResponsesKey(height), bz)
 }
 
 func (store dbStore) getValue(key []byte) ([]byte, error) {
