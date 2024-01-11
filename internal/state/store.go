@@ -543,6 +543,13 @@ func (store dbStore) LoadLastFinalizeBlockResponse(height int64) (*abci.Finalize
 			if height != info.GetHeight() {
 				return nil, fmt.Errorf("expected height %d but last stored abci responses was at height %d", height, info.GetHeight())
 			}
+			if info.FinalizeBlock == nil {
+				// sanity check
+				if info.LegacyAbciResponses == nil {
+					panic("state store contains last abci response but it is empty")
+				}
+				return responseFinalizeBlockFromLegacy(info.LegacyAbciResponses), nil
+			}
 			return info.FinalizeBlock, nil
 		}
 		// END OF DEPRECATED lastABCIResponseKey
