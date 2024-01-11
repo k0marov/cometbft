@@ -533,7 +533,7 @@ func (store dbStore) LoadLastFinalizeBlockResponse(height int64) (*abci.Finalize
 		// It is possible if this is called directly after an upgrade that
 		// `lastABCIResponseKey` contains the last ABCI responses.
 		bz, err := store.db.Get(lastABCIResponseKey)
-		if len(bz) > 0 {
+		if err == nil && len(bz) > 0 {
 			info := new(cmtstate.ABCIResponsesInfo)
 			err = info.Unmarshal(bz)
 			if err != nil {
