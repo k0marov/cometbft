@@ -502,7 +502,6 @@ func (store dbStore) LoadFinalizeBlockResponse(height int64) (*abci.FinalizeBloc
 		legacyResp := new(cmtstate.LegacyABCIResponses)
 		rerr := legacyResp.Unmarshal(buf)
 		if rerr != nil {
-			// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 			cmtos.Exit(fmt.Sprintf(`LoadFinalizeBlockResponse: Data has been corrupted or its spec has
 					changed: %v\n`, err))
 		}
@@ -557,7 +556,10 @@ func (store dbStore) LoadLastFinalizeBlockResponse(height int64) (*abci.Finalize
 	}
 	resp := new(abci.FinalizeBlockResponse)
 	err = resp.Unmarshal(buf)
-	return resp, err
+	if err != nil {
+		cmtos.Exit(fmt.Sprintf(`LoadLastFinalizeBlockResponse: Data has been corrupted or its spec has changed: %v\n`, err))
+	}
+	return resp, nil
 }
 
 // SaveFinalizeBlockResponse persists the FinalizeBlockResponse to the database.
