@@ -872,7 +872,12 @@ type MempoolConfig struct {
 	WalPath string `mapstructure:"wal_dir"`
 	// Maximum number of transactions in the mempool
 	Size int `mapstructure:"size"`
+	// Maximum size in bytes of a typical transaction that is expected that the network handles most
+	// of the time.
+	MaxBytesTypicalTx int `mapstructure:"max_bytes_typical_tx"`
 	// Limit the total size of all txs in the mempool.
+	// The first half of the mempool is for txs of all sizes, while the second half is only for
+	// txs with maximum size of MaxBytesTypicalTx.
 	// This only accounts for raw transactions (e.g. given 1MB transactions and
 	// max_txs_bytes=5MB, mempool will only accept 5 transactions).
 	MaxTxsBytes int64 `mapstructure:"max_txs_bytes"`
@@ -910,10 +915,11 @@ func DefaultMempoolConfig() *MempoolConfig {
 		WalPath:   "",
 		// Each signature verification takes .5ms, Size reduced until we implement
 		// ABCI Recheck
-		Size:        5000,
-		MaxTxsBytes: 1024 * 1024 * 1024, // 1GB
-		CacheSize:   10000,
-		MaxTxBytes:  1024 * 1024, // 1MB
+		Size:              10000,
+		MaxBytesTypicalTx: 10240,
+		MaxTxsBytes:       10000/2*10240 + 50*1024*1024, // 100Mb = half mempool capacity (that is, Size / 2) for txs of size MaxBytesTypicalTx + 50 txs of size MaxTxBytes
+		CacheSize:         20000,
+		MaxTxBytes:        1024 * 1024, // 1MB
 		ExperimentalMaxGossipConnectionsToNonPersistentPeers: 0,
 		ExperimentalMaxGossipConnectionsToPersistentPeers:    0,
 	}

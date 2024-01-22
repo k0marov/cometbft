@@ -413,6 +413,10 @@ wal_dir = "{{ js .Mempool.WalPath }}"
 # Maximum number of transactions in the mempool
 size = {{ .Mempool.Size }}
 
+# Maximum size in bytes of a typical transaction that is expected that the 
+# network handles most of the time.
+max_bytes_typical_tx = {{ .Mempool.MaxBytesTypicalTx }}
+
 # Limit the total size of all txs in the mempool.
 # This only accounts for raw transactions (e.g. given 1MB transactions and
 # max_txs_bytes=5MB, mempool will only accept 5 transactions).
