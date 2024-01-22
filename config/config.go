@@ -1098,6 +1098,8 @@ type ConsensusConfig struct {
 	WalPath string `mapstructure:"wal_file"`
 	walFile string // overrides WalPath if set
 
+	// Enable dynamic adjustments of TimeoutPropose, TimeoutPrevote, TimeoutPrecommit, and TimeoutCommit.
+	DynamicTimeouts bool `mapstructure:"dynamic_timeouts"`
 	// How long we wait for a proposal block before prevoting nil
 	TimeoutPropose time.Duration `mapstructure:"timeout_propose"`
 	// How much timeout_propose increases with each round
@@ -1135,6 +1137,7 @@ type ConsensusConfig struct {
 func DefaultConsensusConfig() *ConsensusConfig {
 	return &ConsensusConfig{
 		WalPath:                          filepath.Join(DefaultDataDir, "cs.wal", "wal"),
+		DynamicTimeouts:                  true,
 		TimeoutPropose:                   3000 * time.Millisecond,
 		TimeoutProposeDelta:              500 * time.Millisecond,
 		TimeoutPrevote:                   1000 * time.Millisecond,
@@ -1155,6 +1158,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 // TestConsensusConfig returns a configuration for testing the consensus service.
 func TestConsensusConfig() *ConsensusConfig {
 	cfg := DefaultConsensusConfig()
+	cfg.DynamicTimeouts = true
 	cfg.TimeoutPropose = 40 * time.Millisecond
 	cfg.TimeoutProposeDelta = 1 * time.Millisecond
 	cfg.TimeoutPrevote = 10 * time.Millisecond

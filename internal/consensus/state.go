@@ -1684,6 +1684,7 @@ func (cs *State) enterCommit(height int64, commitRound int32) {
 		logger.Debug("commit is for a locked block; set ProposalBlock=LockedBlock", "block_hash", blockID.Hash)
 		cs.ProposalBlock = cs.LockedBlock
 		cs.ProposalBlockParts = cs.LockedBlockParts
+		cs.adjustTimeouts(cs.ProposalBlock.Size())
 	}
 
 	// If we don't have the block being committed, set up to get it.
@@ -2063,14 +2064,39 @@ func (cs *State) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (add
 
 		cs.ProposalBlock = block
 
+		cs.adjustTimeouts(block.Size())
+
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
-		cs.Logger.Info("received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
+		cs.Logger.Info("received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash(), "block-bytes", block.Size())
 
 		if err := cs.eventBus.PublishEventCompleteProposal(cs.CompleteProposalEvent()); err != nil {
 			cs.Logger.Error("failed publishing event complete proposal", "err", err)
 		}
 	}
 	return added, nil
+}
+
+// adjustTimeouts will dinamically change the voting timeouts according to the size of the current
+// block. This is to allow time for processing the votes (signing, validating, etc.), in case of big
+// blocks, or for speeding up block finality, in case of small blocks.
+func (cs *State) adjustTimeouts(blockSize int) {
+	if cs.config.DynamicTimeouts {
+		var timeoutFactor float32
+		switch {
+		case blockSize < 128000:
+			timeoutFactor = 0.25
+		case blockSize < 512000:
+			timeoutFactor = 0.5
+		case blockSize > 4194304:
+			timeoutFactor = 2
+		default:
+			timeoutFactor = 1
+		}
+		cs.config.TimeoutPropose = time.Duration(float32(cfg.DefaultConfig().Consensus.TimeoutPropose.Milliseconds())*timeoutFactor) * time.Millisecond
+		cs.config.TimeoutPrevote = time.Duration(float32(cfg.DefaultConfig().Consensus.TimeoutPrevote.Milliseconds())*timeoutFactor) * time.Millisecond
+		cs.config.TimeoutPrecommit = time.Duration(float32(cfg.DefaultConfig().Consensus.TimeoutPrecommit.Milliseconds())*timeoutFactor) * time.Millisecond
+		cs.config.TimeoutCommit = time.Duration(float32(cfg.DefaultConfig().Consensus.TimeoutCommit.Milliseconds())*timeoutFactor) * time.Millisecond
+	}
 }
 
 func (cs *State) handleCompleteProposal(blockHeight int64) {

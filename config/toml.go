@@ -501,6 +501,8 @@ version = "{{ .BlockSync.Version }}"
 
 wal_file = "{{ js .Consensus.WalPath }}"
 
+# Enable dynamic adjustments of TimeoutPropose, TimeoutPrevote, TimeoutPrecommit, and TimeoutCommit.
+dynamic_timeouts = "{{ .Consensus.DynamicTimeouts }}"
 # How long we wait for a proposal block before prevoting nil
 timeout_propose = "{{ .Consensus.TimeoutPropose }}"
 # How much timeout_propose increases with each round
