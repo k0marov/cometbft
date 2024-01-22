@@ -2096,6 +2096,8 @@ func (cs *State) adjustTimeouts(blockSize int) {
 		cs.config.TimeoutPrevote = time.Duration(float32(cfg.DefaultConfig().Consensus.TimeoutPrevote.Milliseconds())*timeoutFactor) * time.Millisecond
 		cs.config.TimeoutPrecommit = time.Duration(float32(cfg.DefaultConfig().Consensus.TimeoutPrecommit.Milliseconds())*timeoutFactor) * time.Millisecond
 		cs.config.TimeoutCommit = time.Duration(float32(cfg.DefaultConfig().Consensus.TimeoutCommit.Milliseconds())*timeoutFactor) * time.Millisecond
+
+		cs.metrics.TimeoutsFactor.Set(float64(timeoutFactor))
 	}
 }
 

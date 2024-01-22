@@ -198,6 +198,12 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "late_votes",
 			Help:      "LateVotes stores the number of votes that were received by this node that correspond to earlier heights and rounds than this node is currently in.",
 		}, append(labels, "vote_type")).With(labelsAndValues...),
+		TimeoutsFactor: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "timeouts_factor",
+			Help:      "The timeout multiplier.",
+		}, labels).With(labelsAndValues...),
 	}
 }
 
@@ -233,5 +239,6 @@ func NopMetrics() *Metrics {
 		ProposalCreateCount:       discard.NewCounter(),
 		RoundVotingPowerPercent:   discard.NewGauge(),
 		LateVotes:                 discard.NewCounter(),
+		TimeoutsFactor:            discard.NewGauge(),
 	}
 }

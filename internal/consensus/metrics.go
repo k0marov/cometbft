@@ -124,6 +124,9 @@ type Metrics struct {
 	// correspond to earlier heights and rounds than this node is currently
 	// in.
 	LateVotes metrics.Counter `metrics_labels:"vote_type"`
+
+	// The timeout multiplier.
+	TimeoutsFactor metrics.Gauge
 }
 
 func (m *Metrics) MarkProposalProcessed(accepted bool) {
